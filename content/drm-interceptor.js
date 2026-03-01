@@ -32,7 +32,7 @@
     // Inject the DRM hooks into the page context
     function injectDRMScript() {
         const script = document.createElement('script');
-        script.textContent = `(${drmPageScript.toString()})();`;
+        script.textContent = \`(\${drmPageScript.toString()})();\`;
 
         const append = () => {
             const target = document.head || document.documentElement;
@@ -80,7 +80,7 @@
                     label: 'DRM (' + keySystem + ')',
                     source: 'drm',
                     isDRM: true,
-                    drm: { keySystem: keySystem },
+                    drm: { keySystem: keySystem, configs: configs },
                 });
 
                 const access = await orig(keySystem, configs);
@@ -107,12 +107,10 @@
         }
 
         function wrapSession(session, keySystem) {
-            // Intercept generateRequest (captures PSSH / init data)
             const origGenReq = session.generateRequest.bind(session);
             session.generateRequest = async function (initDataType, initData) {
                 try {
                     var arr = new Uint8Array(initData);
-                    console.log('[VidGrab DRM] Init data (' + initDataType + '):', arr.length, 'bytes');
                     notifyDRM({
                         url: location.href, type: 'video', source: 'drm-init',
                         label: 'DRM Init (' + keySystem + ')', isDRM: true,
@@ -122,19 +120,15 @@
                 return origGenReq(initDataType, initData);
             };
 
-            // Intercept update (captures license response / keys)
             const origUpdate = session.update.bind(session);
             session.update = async function (response) {
                 try {
                     var resp = new Uint8Array(response);
-                    console.log('[VidGrab DRM] License response:', resp.length, 'bytes (' + keySystem + ')');
-
                     var keys = null;
                     if (keySystem === 'org.w3.clearkey') {
                         try {
                             var json = JSON.parse(new TextDecoder().decode(resp));
                             keys = json.keys || json;
-                            console.log('[VidGrab DRM] ClearKey keys:', keys);
                         } catch (e) { }
                     }
                     if (keySystem.indexOf('widevine') !== -1) {
@@ -150,14 +144,19 @@
                 return origUpdate(response);
             };
 
-            // Key status changes
             session.addEventListener('keystatuseschange', function () {
                 try {
                     var statuses = [];
                     session.keyStatuses.forEach(function (status, keyId) {
                         statuses.push({ keyId: arrayToHex(new Uint8Array(keyId)), status: status });
                     });
-                    if (statuses.length > 0) console.log('[VidGrab DRM] Key statuses:', statuses);
+                    if (statuses.length > 0) {
+                        notifyDRM({
+                            url: location.href, type: 'video', source: 'drm-status',
+                            label: 'DRM Status (' + keySystem + ')', isDRM: true,
+                            drm: { keySystem: keySystem, statuses: statuses },
+                        });
+                    }
                 } catch (e) { }
             });
 
@@ -166,8 +165,8 @@
 
         // ========== Intercept license server fetch requests ==========
         var LICENSE_RE = [
-            /\/license/i, /\/widevine/i, /\/drm/i, /\/getlicense/i,
-            /license\.service/i, /pallycon/i, /buydrm/i, /drmtoday/i, /ezdrm/i
+            /\/license/i, /\\/widevine/i, /\\/drm/i, /\\/getlicense/i,
+            /license\\.service/i, /pallycon/i, /buydrm/i, /drmtoday/i, /ezdrm/i
         ];
         function isLicenseUrl(url) {
             for (var i = 0; i < LICENSE_RE.length; i++) { if (LICENSE_RE[i].test(url)) return true; }
@@ -179,7 +178,6 @@
             try {
                 var url = typeof arguments[0] === 'string' ? arguments[0] : (arguments[0] && arguments[0].url);
                 if (url && isLicenseUrl(url)) {
-                    console.log('[VidGrab DRM] License request:', url);
                     notifyDRM({ url: location.href, type: 'video', source: 'drm-license', label: 'DRM License Request', isDRM: true, drm: { licenseUrl: url } });
                 }
             } catch (e) { }
@@ -190,6 +188,5 @@
             'color:#A855F7;font-weight:bold', 'color:#888');
     }
 
-    // Inject immediately
     injectDRMScript();
 })();

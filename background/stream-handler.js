@@ -67,8 +67,6 @@
                 const baseUrl = mpdUrl.substring(0, mpdUrl.lastIndexOf('/') + 1);
                 const representations = [];
 
-                // Regex-based XML parsing (MV3 service workers don't have DOMParser)
-                const repRegex = /<Representation\b([^>]*)(?:\/>|>([\s\S]*?)<\/Representation>)/gi;
                 const adaptRegex = /<AdaptationSet\b([^>]*)>([\s\S]*?)<\/AdaptationSet>/gi;
 
                 let adaptMatch;
@@ -118,29 +116,49 @@
         },
 
         /**
-         * Download all segments of a stream and concatenate into a single blob
+         * Download all segments of a stream and concatenate into a single blob.
+         * Parallelized with retries.
          */
         async downloadSegments(segmentUrls, onProgress) {
-            const chunks = [];
-            let loaded = 0;
-            for (let i = 0; i < segmentUrls.length; i++) {
+            const chunks = new Array(segmentUrls.length);
+            let loadedCount = 0;
+            const CONCURRENCY = 5;
+            const MAX_RETRIES = 3;
+
+            async function downloadWithRetry(url, index, retryCount = 0) {
                 try {
-                    const resp = await fetch(segmentUrls[i]);
+                    const resp = await fetch(url);
+                    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
                     const data = await resp.arrayBuffer();
-                    chunks.push(new Uint8Array(data));
-                    loaded++;
-                    if (onProgress) onProgress(loaded / segmentUrls.length);
+                    chunks[index] = new Uint8Array(data);
+                    loadedCount++;
+                    if (onProgress) onProgress(loadedCount / segmentUrls.length);
                 } catch (err) {
-                    console.warn(`[VidGrab] Segment ${i} failed:`, err);
+                    if (retryCount < MAX_RETRIES) {
+                        await new Promise(r => setTimeout(r, 1000 * (retryCount + 1)));
+                        return downloadWithRetry(url, index, retryCount + 1);
+                    }
+                    console.warn(`[VidGrab] Segment ${index} failed after ${MAX_RETRIES} retries:`, err);
+                    chunks[index] = new Uint8Array(0);
+                    loadedCount++;
                 }
             }
 
-            const totalLen = chunks.reduce((s, c) => s + c.length, 0);
+            for (let i = 0; i < segmentUrls.length; i += CONCURRENCY) {
+                const batch = segmentUrls.slice(i, i + CONCURRENCY).map((url, j) =>
+                    downloadWithRetry(url, i + j)
+                );
+                await Promise.all(batch);
+            }
+
+            const totalLen = chunks.reduce((s, c) => s + (c ? c.length : 0), 0);
             const result = new Uint8Array(totalLen);
             let offset = 0;
             for (const c of chunks) {
-                result.set(c, offset);
-                offset += c.length;
+                if (c) {
+                    result.set(c, offset);
+                    offset += c.length;
+                }
             }
 
             return new Blob([result], { type: 'video/mp2t' });
@@ -169,7 +187,10 @@
         if (!rel) return '';
         if (rel.startsWith('http://') || rel.startsWith('https://')) return rel;
         if (rel.startsWith('/')) {
-            try { return new URL(rel, base).href; } catch { return base + rel; }
+            try {
+                const u = new URL(base);
+                return u.origin + rel;
+            } catch { return rel; }
         }
         return base + rel;
     }

@@ -26,7 +26,7 @@
                         url: window.location.href,
                         type: isV ? 'video' : 'audio',
                         format: fmtFromMime(mimeType),
-                        label: `MediaSource (${mimeType.split(';')[0]})`,
+                        label: \`MediaSource (\${mimeType.split(';')[0]})\`,
                         source: 'mediasource',
                         mimeType,
                     });
@@ -48,7 +48,7 @@
                         url: blobUrl,
                         type: type.startsWith('audio/') ? 'audio' : 'video',
                         format: fmtFromMime(type),
-                        label: `Blob (${type})`,
+                        label: \`Blob (\${type})\`,
                         size: obj.size,
                         source: 'blob',
                     });
@@ -82,9 +82,9 @@
     // ========== fetch Interception ==========
     const origFetch = window.fetch;
     window.fetch = function (...args) {
-        const url = typeof args[0] === 'string' ? args[0] : args[0]?.url;
-        if (url && isMediaUrl(url)) {
-            notify({ url, type: guessType(url), format: extFromUrl(url), source: 'fetch' });
+        const url = typeof args[0] === 'string' ? args[0] : (args[0] && args[0].url);
+        if (url && isMediaUrl(String(url))) {
+            notify({ url: String(url), type: guessType(String(url)), format: extFromUrl(String(url)), source: 'fetch' });
         }
         return origFetch.apply(this, args);
     };

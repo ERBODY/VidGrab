@@ -22,12 +22,14 @@
 
         try {
             const script = document.createElement('script');
+            // Try to load FFmpeg from CDN with fallback
             script.src = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.min.js';
             document.head.appendChild(script);
 
             await new Promise((resolve, reject) => {
-                script.onload = resolve;
-                script.onerror = () => reject(new Error('Failed to load FFmpeg from CDN'));
+                const timeout = setTimeout(() => reject(new Error('FFmpeg CDN load timeout')), 15000);
+                script.onload = () => { clearTimeout(timeout); resolve(); };
+                script.onerror = () => { clearTimeout(timeout); reject(new Error('Failed to load FFmpeg from CDN')); };
             });
 
             const FFmpegLib = window.FFmpegWASM || window.FFmpeg;
@@ -74,7 +76,7 @@
     // ========== Convert ==========
     async function convertMedia(job) {
         const loaded = await loadFFmpeg();
-        if (!loaded || !ffmpeg) throw new Error('FFmpeg not available');
+        if (!loaded || !ffmpeg) throw new Error('FFmpeg not available. Check your internet connection.');
 
         const { url, outputFormat, quality, id, filename } = job;
 
@@ -107,7 +109,6 @@
 
         const dlName = ((filename || 'vidgrab_converted').replace(/\.[^.]+$/, '')) + '.' + outputFormat;
 
-        // Send converted data back to bridge as ArrayBuffer (transferable)
         const buffer = outputData.buffer;
         notifyParent('VIDGRAB_CONVERT_DONE', {
             arrayBuffer: buffer,
@@ -116,7 +117,6 @@
             id: id,
         });
 
-        // Cleanup
         try { await ffmpeg.deleteFile(inputName); } catch (e) { }
         try { await ffmpeg.deleteFile(outputName); } catch (e) { }
     }
@@ -153,7 +153,6 @@
         return args;
     }
 
-    // ========== Listen for conversion requests from parent (bridge) ==========
     window.addEventListener('message', (event) => {
         if (!event.data || event.data.type !== 'VIDGRAB_CONVERT_REQUEST') return;
 

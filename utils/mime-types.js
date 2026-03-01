@@ -51,6 +51,7 @@
         /dailymotion/i, /reddit.*\.mp4/i, /\.redd\.it.*\.mp4/i,
         /bitmovin/i, /akamaihd\.net.*video/i, /cloudfront.*video/i,
         /jwplayer/i, /brightcove/i, /vimeo.*\.mp4/i,
+        /video-streaming/i, /playlist\.m3u8/i, /manifest\.mpd/i
     ];
 
     const IGNORE_PATTERNS = [
