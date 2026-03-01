@@ -17,8 +17,9 @@
         detectAudio: true,
         detectEmbedded: true,
         minSizeKB: 50,
-        drmCapture: false,
+        drmCapture: true,
         drmLogLicense: false,
+        persistMedia: false,
         showBadge: true,
         showNotifications: true,
         theme: 'dark',
@@ -30,8 +31,8 @@
         filenameFormat: 'select', maxConcurrent: 'number', autoDetect: 'checkbox',
         detectStreams: 'checkbox', detectAudio: 'checkbox', detectEmbedded: 'checkbox',
         minSizeKB: 'number', drmCapture: 'checkbox', drmLogLicense: 'checkbox',
-        showBadge: 'checkbox', showNotifications: 'checkbox', theme: 'select',
-        excludedSites: 'textarea',
+        persistMedia: 'checkbox', showBadge: 'checkbox', showNotifications: 'checkbox',
+        theme: 'select', excludedSites: 'textarea',
     };
 
     function load() {

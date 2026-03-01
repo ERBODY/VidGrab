@@ -1,6 +1,6 @@
 /**
  * VidGrab — Content Script: Enhanced Media Detector
- * Scans DOM for all media elements, monitors dynamic changes,
+ * Scans DOM and Shadow DOM for all media elements, monitors dynamic changes,
  * extracts full metadata. Works cross-browser via browser.* polyfill.
  */
 
@@ -18,7 +18,7 @@
 
     // Export scan function for popup rescan
     window.__vidgrab_scan = (force = true) => {
-        if (force) DETECTED.clear(); // Clear so it re-reports to ephemeral background SW
+        if (force) DETECTED.clear();
         scanAll();
     };
 
@@ -48,16 +48,19 @@
         } catch { }
     }
 
-    // ========== Scan media elements ==========
-    function scanAll() {
-        // Video & audio elements
-        document.querySelectorAll('video, audio').forEach(processMedia);
+    // ========== Shadow DOM Support ==========
+    function scanNode(node) {
+        if (node.shadowRoot) {
+            scanTree(node.shadowRoot);
+            observer.observe(node.shadowRoot, { childList: true, subtree: true });
+        }
 
-        // Source elements
-        document.querySelectorAll('source').forEach((el) => {
-            const src = el.src || el.getAttribute('src');
+        if (node.tagName === 'VIDEO' || node.tagName === 'AUDIO') {
+            processMedia(node);
+        } else if (node.tagName === 'SOURCE') {
+            const src = node.src || node.getAttribute('src');
             if (src && !src.startsWith('blob:')) {
-                const parent = el.closest('video, audio');
+                const parent = node.closest('video, audio');
                 report({
                     url: src,
                     type: parent?.tagName === 'AUDIO' ? 'audio' : 'video',
@@ -65,21 +68,34 @@
                     source: 'dom',
                 });
             }
-        });
-
-        // Embed & object elements (Flash-era, some sites still use)
-        document.querySelectorAll('embed[src], object[data]').forEach((el) => {
-            const src = el.src || el.getAttribute('data') || el.getAttribute('src');
+        } else if (node.tagName === 'EMBED' || node.tagName === 'OBJECT') {
+            const src = node.src || node.getAttribute('data') || node.getAttribute('src');
             if (src && isMediaExt(src)) {
                 report({ url: src, type: 'video', format: extFromUrl(src), source: 'embed' });
             }
-        });
+        }
+    }
 
-        // Open Graph and Twitter meta tags (social media video embeds)
-        document.querySelectorAll('meta[property="og:video"], meta[property="og:video:url"], meta[property="og:audio"], meta[name="twitter:player:stream"]').forEach((el) => {
+    function scanTree(root) {
+        root.querySelectorAll('video, audio, source, embed, object').forEach(scanNode);
+        // Find all elements with potential shadow roots
+        const all = root.querySelectorAll('*');
+        for (let i = 0; i < all.length; i++) {
+            if (all[i].shadowRoot) {
+                scanTree(all[i].shadowRoot);
+            }
+        }
+    }
+
+    // ========== Scan media elements ==========
+    function scanAll() {
+        scanTree(document);
+
+        // Open Graph and Twitter meta tags
+        document.querySelectorAll('meta[property*="video"], meta[property*="audio"], meta[name*="video"], meta[name*="audio"], meta[name="twitter:player:stream"]').forEach((el) => {
             const url = el.getAttribute('content');
-            if (url) {
-                const isAudio = el.getAttribute('property')?.includes('audio');
+            if (url && (isMediaExt(url) || url.includes('video') || url.includes('audio'))) {
+                const isAudio = el.getAttribute('property')?.includes('audio') || el.getAttribute('name')?.includes('audio');
                 report({ url, type: isAudio ? 'audio' : 'video', format: extFromUrl(url), source: 'meta' });
             }
         });
@@ -92,7 +108,6 @@
             } catch { }
         });
 
-        // Social media-specific selectors
         scanSocialMedia();
     }
 
@@ -113,8 +128,8 @@
         };
 
         if (info.width && info.height) {
-            info.quality = `${info.height}p`;
-            info.resolution = `${info.width}x${info.height}`;
+            info.quality = \`\${info.height}p\`;
+            info.resolution = \`\${info.width}x\${info.height}\`;
         }
 
         report(info);
@@ -124,49 +139,25 @@
     function scanSocialMedia() {
         const host = window.location.hostname;
 
-        // Instagram stories & reels
+        // Instagram
         if (host.includes('instagram.com')) {
-            document.querySelectorAll('video[src], video source[src]').forEach((el) => {
-                const src = el.src || el.getAttribute('src');
-                if (src) report({ url: src, type: 'video', format: 'mp4', source: 'instagram' });
-            });
-        }
-
-        // Facebook
-        if (host.includes('facebook.com') || host.includes('fb.com')) {
-            document.querySelectorAll('video[src]').forEach((el) => {
-                if (el.src) report({ url: el.src, type: 'video', format: 'mp4', source: 'facebook' });
-            });
-        }
-
-        // Twitter/X
-        if (host.includes('twitter.com') || host.includes('x.com')) {
-            document.querySelectorAll('video[src], video source[src]').forEach((el) => {
-                const src = el.src || el.getAttribute('src');
-                if (src) report({ url: src, type: 'video', format: 'mp4', source: 'twitter' });
-            });
+            document.querySelectorAll('video').forEach(processMedia);
         }
 
         // TikTok
         if (host.includes('tiktok.com')) {
-            document.querySelectorAll('video[src]').forEach((el) => {
-                if (el.src) report({ url: el.src, type: 'video', format: 'mp4', source: 'tiktok' });
-            });
+            document.querySelectorAll('video').forEach(processMedia);
         }
 
-        // Reddit
-        if (host.includes('reddit.com') || host.includes('redd.it')) {
-            document.querySelectorAll('video[src], source[src]').forEach((el) => {
-                const src = el.src || el.getAttribute('src');
-                if (src) report({ url: src, type: 'video', source: 'reddit' });
-            });
+        // Twitter/X
+        if (host.includes('twitter.com') || host.includes('x.com')) {
+            document.querySelectorAll('video').forEach(processMedia);
         }
 
-        // SoundCloud (audio)
-        if (host.includes('soundcloud.com')) {
-            document.querySelectorAll('audio[src]').forEach((el) => {
-                if (el.src) report({ url: el.src, type: 'audio', format: 'mp3', source: 'soundcloud' });
-            });
+        // YouTube (some desktop cases)
+        if (host.includes('youtube.com')) {
+             const video = document.querySelector('video.html5-main-video');
+             if (video) processMedia(video);
         }
     }
 
@@ -183,6 +174,10 @@
         if (data.embedUrl) {
             report({ url: data.embedUrl, type: 'video', source: 'json-ld' });
         }
+        // Deep scan for video objects
+        for (const key in data) {
+            if (typeof data[key] === 'object') extractFromJsonLD(data[key]);
+        }
     }
 
     // ========== MutationObserver ==========
@@ -190,19 +185,11 @@
         for (const m of mutations) {
             for (const node of m.addedNodes) {
                 if (node.nodeType !== 1) continue;
-                if (node.tagName === 'VIDEO' || node.tagName === 'AUDIO') {
-                    processMedia(node);
-                    watch(node);
-                }
-                node.querySelectorAll?.('video, audio').forEach((el) => { processMedia(el); watch(el); });
+                scanNode(node);
+                node.querySelectorAll?.('video, audio, source, embed, object').forEach(scanNode);
             }
         }
     });
-
-    function watch(el) {
-        el.addEventListener('loadedmetadata', () => processMedia(el));
-        el.addEventListener('canplay', () => processMedia(el), { once: true });
-    }
 
     // ========== Inject page-level script ==========
     function injectPageScript() {
@@ -210,16 +197,7 @@
             const script = document.createElement('script');
             script.src = chrome.runtime.getURL('content/injected.js');
             script.onload = () => script.remove();
-
-            const append = () => {
-                const target = document.head || document.documentElement;
-                if (target) {
-                    target.appendChild(script);
-                } else {
-                    setTimeout(append, 10);
-                }
-            };
-            append();
+            (document.head || document.documentElement).appendChild(script);
         } catch { }
     }
 
@@ -243,9 +221,8 @@
     scanAll();
     if (document.readyState !== 'complete') window.addEventListener('load', scanAll);
 
-    // Periodic scan for SPAs (stops after 30s)
-    let n = 0;
-    const iv = setInterval(() => { scanAll(); if (++n >= 30) clearInterval(iv); }, 1000);
+    // Periodic scan for SPAs
+    setInterval(scanSocialMedia, 2000);
 
     injectPageScript();
 })();

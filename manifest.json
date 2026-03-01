@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "VidGrab — Universal Media Downloader",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Download any video, audio, or stream from any website. Convert formats, capture DRM content. Open-source & cross-browser.",
   "homepage_url": "https://github.com/vidgrab/vidgrab",
   "permissions": [
@@ -11,7 +11,8 @@
     "webRequest",
     "storage",
     "scripting",
-    "offscreen"
+    "offscreen",
+    "notifications"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -25,6 +26,7 @@
         "<all_urls>"
       ],
       "js": [
+        "lib/browser-polyfill.js",
         "content/detector.js",
         "content/drm-interceptor.js"
       ],
