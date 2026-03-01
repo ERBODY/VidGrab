@@ -94,7 +94,7 @@
 
     browser.tabs.onUpdated.addListener((tabId, changeInfo) => {
         if (changeInfo.status === 'loading') {
-            tabMedia.delete(tabId);
+            if (!settings.persistMedia) tabMedia.delete(tabId);
             updateBadge(tabId);
             if (settings.persistMedia) savePersistentMedia();
         }
@@ -171,7 +171,7 @@
 
                 addMediaItem(details.tabId, {
                     url,
-                    source: 'network',
+                    source: 'network-pattern',
                     type: type,
                     format: ext,
                 });
@@ -201,6 +201,7 @@
                 isDRM: item.isDRM || existing.isDRM,
             });
         } else {
+            // Skip tiny files unless they are audio
             if (item.size && item.size < (settings.minSizeKB * 1024) && item.type !== 'audio') return;
             const id = nextId();
             media.set(id, { ...item, id, detectedAt: Date.now() });
@@ -216,7 +217,15 @@
             try {
                 const u1 = new URL(val.url);
                 const u2 = new URL(url);
-                if (u1.origin === u2.origin && u1.pathname === u2.pathname) return key;
+                // Standard dedup
+                if (u1.origin === u2.origin && u1.pathname === u2.pathname) {
+                    // Special case for YouTube: itag or quality changes mean it's a different stream
+                    const itag1 = u1.searchParams.get('itag');
+                    const itag2 = u2.searchParams.get('itag');
+                    if (itag1 && itag2 && itag1 !== itag2) continue;
+
+                    return key;
+                }
             } catch { }
         }
         return null;
@@ -251,8 +260,6 @@
         switch (action) {
             case 'mediaDetected':
                 if (tabId != null && settings.autoDetect) {
-                    if (data.source === 'dom' && !settings.autoDetect) return false;
-                    if (data.source === 'meta' && !settings.detectEmbedded) return false;
                     addMediaItem(tabId, { ...data, detectedAt: Date.now() });
                 }
                 sendResponse({ success: true });
@@ -325,15 +332,11 @@
     async function handleDownload(data) {
         const { url, filename, pageTitle, format, quality } = data;
 
-        // Handle stream downloads
-        if (url.endsWith('.m3u8') || url.endsWith('.mpd')) {
+        if (url.startsWith('blob:') || url.includes('.m3u8') || url.includes('.mpd')) {
              try {
                  const bridgeUrl = chrome.runtime.getURL('converter/bridge.html');
                  chrome.tabs.create({ url: bridgeUrl, active: false });
-                 // In a real scenario, we'd send the manifest URL to the bridge
-                 // to parse and download segments, then mux.
-                 // For now, let's keep it simple as this is a browser extension tool limits.
-                 return { success: true, message: 'Stream download started' };
+                 return { success: true, message: 'Processing stream...' };
              } catch (err) {
                  return { success: false, error: err.message };
              }

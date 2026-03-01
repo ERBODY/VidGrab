@@ -51,7 +51,8 @@
         /dailymotion/i, /reddit.*\.mp4/i, /\.redd\.it.*\.mp4/i,
         /bitmovin/i, /akamaihd\.net.*video/i, /cloudfront.*video/i,
         /jwplayer/i, /brightcove/i, /vimeo.*\.mp4/i,
-        /video-streaming/i, /playlist\.m3u8/i, /manifest\.mpd/i
+        /video-streaming/i, /playlist\.m3u8/i, /manifest\.mpd/i,
+        /ytimg\.com/i, /youtube\.com\/get_video/i
     ];
 
     const IGNORE_PATTERNS = [
@@ -62,25 +63,41 @@
 
     function getMediaInfoFromMime(mime) {
         if (!mime) return null;
-        return MEDIA_MIME_TYPES[mime.split(';')[0].trim().toLowerCase()] || null;
+        const baseMime = mime.split(';')[0].trim().toLowerCase();
+        return MEDIA_MIME_TYPES[baseMime] || null;
     }
 
     function getExtensionFromUrl(url) {
         try {
-            const m = new URL(url).pathname.match(/\.([a-zA-Z0-9]+)(?:\?|#|$)/);
-            return m ? m[1].toLowerCase() : null;
-        } catch { return null; }
+            const u = new URL(url);
+            const m = u.pathname.match(/\.([a-zA-Z0-9]+)(?:\?|#|$)/);
+            if (m) return m[1].toLowerCase();
+
+            const mimeParam = u.searchParams.get('mime');
+            if (mimeParam) {
+                const info = getMediaInfoFromMime(mimeParam);
+                if (info) return info.ext;
+            }
+        } catch { }
+        return null;
     }
 
     function isMediaUrl(url) {
         if (!url) return false;
         if (IGNORE_PATTERNS.some((p) => p.test(url))) return false;
-        return MEDIA_URL_PATTERNS.some((p) => p.test(url));
+        if (MEDIA_URL_PATTERNS.some((p) => p.test(url))) return true;
+        try {
+            const u = new URL(url);
+            const mime = u.searchParams.get('mime') || '';
+            if (mime.includes('video/') || mime.includes('audio/')) return true;
+        } catch {}
+        return false;
     }
 
     function detectMediaType(url, contentType) {
         const mimeInfo = getMediaInfoFromMime(contentType);
         if (mimeInfo) return mimeInfo;
+
         const ext = getExtensionFromUrl(url);
         if (ext && MEDIA_EXTENSIONS.has(ext)) {
             const audioExts = new Set(['mp3', 'm4a', 'ogg', 'weba', 'wav', 'flac', 'aac', 'opus']);
@@ -90,6 +107,16 @@
             if (streamExts.has(ext)) type = 'stream';
             return { ext, type, label: ext.toUpperCase() };
         }
+
+        try {
+            const u = new URL(url);
+            const mimeParam = u.searchParams.get('mime');
+            if (mimeParam) {
+                const info = getMediaInfoFromMime(mimeParam);
+                if (info) return info;
+            }
+        } catch {}
+
         if (isMediaUrl(url)) return { ext: ext || 'mp4', type: 'video', label: 'Video' };
         return null;
     }

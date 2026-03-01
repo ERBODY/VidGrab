@@ -26,7 +26,7 @@
                         url: window.location.href,
                         type: isV ? 'video' : 'audio',
                         format: fmtFromMime(mimeType),
-                        label: \`MediaSource (\${mimeType.split(';')[0]})\`,
+                        label: \`Stream (\${mimeType.split(';')[0]})\`,
                         source: 'mediasource',
                         mimeType,
                     });
@@ -41,15 +41,15 @@
     URL.createObjectURL = function (obj) {
         const blobUrl = origCreateURL.call(this, obj);
         try {
-            if (obj instanceof Blob) {
+            if (obj instanceof Blob || obj instanceof MediaSource) {
                 const type = obj.type || '';
-                if (type.startsWith('video/') || type.startsWith('audio/')) {
+                if (type.startsWith('video/') || type.startsWith('audio/') || obj instanceof MediaSource) {
                     notify({
                         url: blobUrl,
                         type: type.startsWith('audio/') ? 'audio' : 'video',
-                        format: fmtFromMime(type),
-                        label: \`Blob (\${type})\`,
-                        size: obj.size,
+                        format: fmtFromMime(type) || 'mp4',
+                        label: \`Blob (\${type || 'MediaSource'})\`,
+                        size: obj.size || 0,
                         source: 'blob',
                     });
                 }
@@ -100,10 +100,18 @@
 
     // ========== Helpers ==========
     function extFromUrl(url) {
-        try { return new URL(url, location.href).pathname.match(/\.([a-z0-9]+)$/i)?.[1]?.toLowerCase() || ''; } catch { return ''; }
+        try {
+            const u = new URL(url, location.href);
+            const ext = u.pathname.match(/\.([a-z0-9]+)$/i)?.[1]?.toLowerCase();
+            if (ext) return ext;
+            const mime = u.searchParams.get('mime');
+            if (mime) return mime.split('/')[1]?.split(';')[0];
+        } catch { }
+        return '';
     }
 
     function fmtFromMime(mime) {
+        if (!mime) return '';
         const m = { 'video/mp4': 'mp4', 'video/webm': 'webm', 'audio/mp4': 'm4a', 'audio/webm': 'weba', 'audio/mpeg': 'mp3', 'audio/ogg': 'ogg' };
         return m[mime.split(';')[0].trim()] || mime.split('/')[1]?.split(';')[0] || '';
     }
@@ -126,6 +134,6 @@
 
     function isMediaUrl(url) {
         if (!url || typeof url !== 'string') return false;
-        return PATTERNS.some((p) => p.test(url));
+        return PATTERNS.some((p) => p.test(url)) || url.includes('mime=video') || url.includes('mime=audio');
     }
 })();
