@@ -1,0 +1,75 @@
+{
+  "manifest_version": 3,
+  "name": "VidGrab — Universal Media Downloader",
+  "version": "2.0.0",
+  "description": "Download any video, audio, or stream from any website. Convert formats, capture DRM content. Open-source & cross-browser.",
+  "homepage_url": "https://github.com/vidgrab/vidgrab",
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "downloads",
+    "webRequest",
+    "storage",
+    "scripting",
+    "offscreen"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background/service-worker.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content/detector.js",
+        "content/drm-interceptor.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_title": "VidGrab — Download Media"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "content/injected.js",
+        "converter/converter.html"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ],
+  "sandbox": {
+    "pages": [
+      "converter/converter.html"
+    ]
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "vidgrab@universal-downloader",
+      "strict_min_version": "109.0"
+    }
+  }
+}

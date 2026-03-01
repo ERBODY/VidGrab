@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VidGrab</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+
+<body>
+  <div class="popup-wrapper">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <div class="logo">
+          <svg width="26" height="26" viewBox="0 0 28 28" fill="none">
+            <defs>
+              <linearGradient id="lg" x1="0" y1="0" x2="28" y2="28">
+                <stop offset="0%" stop-color="#A855F7" />
+                <stop offset="100%" stop-color="#06B6D4" />
+              </linearGradient>
+            </defs>
+            <circle cx="14" cy="14" r="14" fill="url(#lg)" />
+            <path d="M9 10 L14 16 L19 10 Z" fill="white" />
+            <rect x="9" y="18" width="10" height="2" rx="1" fill="white" />
+          </svg>
+        </div>
+        <div class="header-text">
+          <h1>VidGrab</h1>
+          <span class="tagline">Universal Media Downloader</span>
+        </div>
+      </div>
+      <div class="header-right">
+        <span id="mediaCount" class="badge">0</span>
+        <button id="settingsBtn" class="icon-btn" title="Settings">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3" />
+            <path
+              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Filter Tabs -->
+    <div class="filter-bar">
+      <button class="filter-tab active" data-filter="all">All</button>
+      <button class="filter-tab" data-filter="video">Video</button>
+      <button class="filter-tab" data-filter="audio">Audio</button>
+      <button class="filter-tab" data-filter="stream">Streams</button>
+      <button class="filter-tab" data-filter="drm">DRM</button>
+    </div>
+
+    <!-- Action Bar -->
+    <div class="action-bar">
+      <button id="refreshBtn" class="action-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="23 4 23 10 17 10" />
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+        </svg>
+        Rescan
+      </button>
+      <button id="downloadAllBtn" class="action-btn primary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="7 10 12 15 17 10" />
+          <line x1="12" y1="15" x2="12" y2="3" />
+        </svg>
+        Download All
+      </button>
+    </div>
+
+    <!-- Media List -->
+    <div id="mediaList" class="media-list">
+      <div id="loadingState" class="state-msg">
+        <div class="spinner"></div>
+        <p>Scanning for media...</p>
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div id="emptyState" class="state-msg hidden">
+      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+        opacity="0.35">
+        <polygon points="23 7 16 12 23 17 23 7" />
+        <rect x="1" y="5" width="15" height="14" rx="2" />
+      </svg>
+      <p class="empty-title">No media detected</p>
+      <p class="empty-desc">Play a video or navigate to a page with media, then click Rescan.</p>
+    </div>
+
+    <!-- Format Picker Modal -->
+    <div id="formatModal" class="modal hidden">
+      <div class="modal-backdrop"></div>
+      <div class="modal-content">
+        <h3>Download As</h3>
+        <div class="format-grid" id="formatGrid">
+          <!-- Video Formats -->
+          <div class="format-section">
+            <span class="format-label">Video</span>
+            <div class="format-btns">
+              <button class="fmt-btn" data-fmt="mp4">MP4</button>
+              <button class="fmt-btn" data-fmt="webm">WebM</button>
+              <button class="fmt-btn" data-fmt="mkv">MKV</button>
+              <button class="fmt-btn" data-fmt="avi">AVI</button>
+              <button class="fmt-btn" data-fmt="mov">MOV</button>
+            </div>
+          </div>
+          <!-- Audio Formats -->
+          <div class="format-section">
+            <span class="format-label">Audio</span>
+            <div class="format-btns">
+              <button class="fmt-btn" data-fmt="mp3">MP3</button>
+              <button class="fmt-btn" data-fmt="aac">AAC</button>
+              <button class="fmt-btn" data-fmt="wav">WAV</button>
+              <button class="fmt-btn" data-fmt="ogg">OGG</button>
+              <button class="fmt-btn" data-fmt="flac">FLAC</button>
+              <button class="fmt-btn" data-fmt="m4a">M4A</button>
+            </div>
+          </div>
+          <!-- Quality -->
+          <div class="format-section">
+            <span class="format-label">Quality</span>
+            <select id="convertQuality" class="quality-select">
+              <option value="highest">Highest</option>
+              <option value="high" selected>High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+        </div>
+        <button id="modalClose" class="modal-close">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <span>VidGrab v2.0 · Open Source</span>
+      <span class="footer-dot">·</span>
+      <span id="pageHost" class="page-host"></span>
+    </footer>
+
+  </div>
+  <script src="../lib/browser-polyfill.js"></script>
+  <script src="popup.js"></script>
+</body>
+
+</html>

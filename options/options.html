@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VidGrab — Settings</title>
+    <link rel="stylesheet" href="options.css">
+</head>
+
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo-area">
+                <svg width="30" height="30" viewBox="0 0 28 28" fill="none">
+                    <defs>
+                        <linearGradient id="lg" x1="0" y1="0" x2="28" y2="28">
+                            <stop offset="0%" stop-color="#A855F7" />
+                            <stop offset="100%" stop-color="#06B6D4" />
+                        </linearGradient>
+                    </defs>
+                    <circle cx="14" cy="14" r="14" fill="url(#lg)" />
+                    <path d="M9 10 L14 16 L19 10 Z" fill="white" />
+                    <rect x="9" y="18" width="10" height="2" rx="1" fill="white" />
+                </svg>
+                <h1>VidGrab Settings</h1>
+            </div>
+            <p class="subtitle">Configure your download and detection preferences</p>
+        </header>
+
+        <form id="settingsForm">
+            <!-- Download Preferences -->
+            <section class="section">
+                <h2 class="section-title">📥 Download Preferences</h2>
+                <div class="field">
+                    <label for="defaultQuality">Preferred Quality</label>
+                    <select id="defaultQuality">
+                        <option value="highest">Highest Available</option>
+                        <option value="1080p">1080p (Full HD)</option>
+                        <option value="720p">720p (HD)</option>
+                        <option value="480p">480p (SD)</option>
+                        <option value="360p">360p</option>
+                        <option value="lowest">Lowest (Save Data)</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="defaultFormat">Default Video Format</label>
+                    <select id="defaultFormat">
+                        <option value="original">Original Format</option>
+                        <option value="mp4">MP4</option>
+                        <option value="webm">WebM</option>
+                        <option value="mkv">MKV</option>
+                        <option value="avi">AVI</option>
+                        <option value="mov">MOV</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="defaultAudioFormat">Default Audio Format</label>
+                    <select id="defaultAudioFormat">
+                        <option value="original">Original Format</option>
+                        <option value="mp3">MP3</option>
+                        <option value="aac">AAC</option>
+                        <option value="wav">WAV</option>
+                        <option value="ogg">OGG Vorbis</option>
+                        <option value="flac">FLAC (Lossless)</option>
+                        <option value="m4a">M4A</option>
+                        <option value="opus">OPUS</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="filenameFormat">Filename Format</label>
+                    <select id="filenameFormat">
+                        <option value="title_quality">Page Title + Quality</option>
+                        <option value="title">Page Title Only</option>
+                        <option value="original">Original Filename</option>
+                        <option value="title_date">Page Title + Date</option>
+                        <option value="timestamp">Timestamp Only</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="maxConcurrent">Max Concurrent Downloads</label>
+                    <input type="number" id="maxConcurrent" value="3" min="1" max="10">
+                </div>
+            </section>
+
+            <!-- Detection -->
+            <section class="section">
+                <h2 class="section-title">🔍 Detection</h2>
+                <div class="field toggle-field">
+                    <div><label>Auto-detect media on page load</label>
+                        <p class="field-desc">Scan pages automatically for video and audio</p>
+                    </div>
+                    <label class="toggle"><input type="checkbox" id="autoDetect" checked><span
+                            class="slider"></span></label>
+                </div>
+                <div class="field toggle-field">
+                    <div><label>Detect HLS / DASH streams</label>
+                        <p class="field-desc">M3U8, MPD streaming manifests</p>
+                    </div>
+                    <label class="toggle"><input type="checkbox" id="detectStreams" checked><span
+                            class="slider"></span></label>
+                </div>
+                <div class="field toggle-field">
+                    <div><label>Detect audio files</label>
+                        <p class="field-desc">MP3, AAC, OGG, FLAC, WAV</p>
+                    </div>
+                    <label class="toggle"><input type="checkbox" id="detectAudio" checked><span
+                            class="slider"></span></label>
+                </div>
+                <div class="field toggle-field">
+                    <div><label>Detect embedded media</label>
+                        <p class="field-desc">Open Graph, meta tags, JSON-LD, embeds</p>
+                    </div>
+                    <label class="toggle"><input type="checkbox" id="detectEmbedded" checked><span
+                            class="slider"></span></label>
+                </div>
+                <div class="field">
+                    <label for="minSizeKB">Minimum file size (KB)</label>
+                    <input type="number" id="minSizeKB" value="50" min="0" max="100000" step="10">
+                    <p class="field-desc">Files smaller than this are ignored (filters thumbnails and tracking pixels)
+                    </p>
+                </div>
+            </section>
+
+            <!-- DRM -->
+            <section class="section">
+                <h2 class="section-title">🔐 DRM Content</h2>
+                <div class="disclaimer-inline">
+                    ⚠️ DRM capture is for educational and personal fair-use only. Respect copyright laws.
+                </div>
+                <div class="field toggle-field">
+                    <div><label>Enable DRM capture</label>
+                        <p class="field-desc">Intercept EME key exchanges (ClearKey & Widevine L3)</p>
+                    </div>
+                    <label class="toggle"><input type="checkbox" id="drmCapture"><span class="slider"></span></label>
+                </div>
+                <div class="field toggle-field">
+                    <div><label>Log license requests</label>
+                        <p class="field-desc">Monitor DRM license server communication</p>
+                    </div>
+                    <label class="toggle"><input type="checkbox" id="drmLogLicense"><span class="slider"></span></label>
+                </div>
+            </section>
+
+            <!-- Notifications & UI -->
+            <section class="section">
+                <h2 class="section-title">🔔 Interface</h2>
+                <div class="field toggle-field">
+                    <div><label>Show badge count on icon</label>
+                        <p class="field-desc">Number of detected media shown on extension icon</p>
+                    </div>
+                    <label class="toggle"><input type="checkbox" id="showBadge" checked><span
+                            class="slider"></span></label>
+                </div>
+                <div class="field toggle-field">
+                    <div><label>Download notifications</label>
+                        <p class="field-desc">Notify when downloads complete</p>
+                    </div>
+                    <label class="toggle"><input type="checkbox" id="showNotifications" checked><span
+                            class="slider"></span></label>
+                </div>
+                <div class="field">
+                    <label for="theme">Theme</label>
+                    <select id="theme">
+                        <option value="dark">Dark (Default)</option>
+                        <option value="midnight">Midnight Blue</option>
+                        <option value="amoled">AMOLED Black</option>
+                    </select>
+                </div>
+            </section>
+
+            <!-- Excluded Sites -->
+            <section class="section">
+                <h2 class="section-title">🚫 Excluded Sites</h2>
+                <div class="field">
+                    <label for="excludedSites">Sites to ignore (one per line)</label>
+                    <textarea id="excludedSites" rows="4" placeholder="example.com&#10;ads.example.net"></textarea>
+                    <p class="field-desc">VidGrab won't detect media on these domains</p>
+                </div>
+            </section>
+
+            <!-- Data -->
+            <section class="section">
+                <h2 class="section-title">💾 Data</h2>
+                <div class="btn-row">
+                    <button type="button" id="exportBtn" class="btn secondary">Export Settings</button>
+                    <button type="button" id="importBtn" class="btn secondary">Import Settings</button>
+                </div>
+                <input type="file" id="importFile" accept=".json" style="display:none">
+            </section>
+
+            <div class="save-bar">
+                <button type="button" id="resetBtn" class="btn secondary">Reset Defaults</button>
+                <button type="submit" class="btn primary">Save Settings</button>
+            </div>
+        </form>
+
+        <div class="disclaimer">
+            <p>VidGrab v2.0 — Open-source, MIT licensed. For personal and educational use. Respect copyright laws and
+                platform terms of service.</p>
+        </div>
+    </div>
+
+    <script src="../lib/browser-polyfill.js"></script>
+    <script src="options.js"></script>
+</body>
+
+</html>
